@@ -501,17 +501,18 @@
             let match;
 
             // Parse overlapping events
-            const overlappingRegex = /payload params:([^}]*?"start\$date":"([^"]+)"[\s\S]*?)"Error occurred in MainBe Can't create event: overlapping[\s\S]*?last issue related with: ([^\n-]+) - (https[^\s]+)/g;
+            const overlappingRegex = /payload params:([^}]*?"start\$date":"([^"]+)"[\s\S]*?)"Error occurred in MainBe Can't create event: overlapping[\s\S]*?List of overlapping events: ([a-f0-9]+)"[\s\S]*?last issue related with: ([^\n-]+) - (https[^\s]+)/g;
             while ((match = overlappingRegex.exec(input)) !== null) {
                 errors.push({
                     type: 'overlapping',
                     eventName: null,
-                    matchInfo: match[3].trim(),
-                    link: extractCleanLink(match[4]),
+                    matchInfo: match[4].trim(),
+                    link: extractCleanLink(match[5]),
                     date: new Date(match[2]),
                     dateStr: match[2],
+                    overlappingEventId: match[3],
                     errorMessage: 'Overlapping events in the same venue',
-                    rawError: 'overlapping 1 existing events of the same venue'
+                    rawError: `overlapping event ID: ${match[3]}`
                 });
             }
 
@@ -659,6 +660,12 @@
                                 <label class="error-detail-label">❌ Error Message</label>
                                 <div class="error-detail-value">${error.errorMessage}</div>
                             </div>
+                            ${error.overlappingEventId ? `
+                            <div class="error-detail">
+                                <label class="error-detail-label">🔗 Conflicting Event ID</label>
+                                <div class="error-detail-value" style="font-family: 'Roboto Mono', monospace; background: #f5f5f5; padding: 8px 12px; border-radius: 4px; border-right: 2px solid #d32f2f;">${error.overlappingEventId}</div>
+                            </div>
+                            ` : ''}
                             <div class="error-detail">
                                 <label class="error-detail-label">🔗 Match Link</label>
                                 <div class="error-detail-value">
@@ -784,6 +791,12 @@
                                 <label class="error-detail-label">❌ Error Message</label>
                                 <div class="error-detail-value">${error.errorMessage}</div>
                             </div>
+                            ${error.overlappingEventId ? `
+                            <div class="error-detail">
+                                <label class="error-detail-label">🔗 Conflicting Event ID</label>
+                                <div class="error-detail-value" style="font-family: 'Roboto Mono', monospace; background: #f5f5f5; padding: 8px 12px; border-radius: 4px; border-right: 2px solid #d32f2f;">${error.overlappingEventId}</div>
+                            </div>
+                            ` : ''}
                             <div class="error-detail">
                                 <label class="error-detail-label">🔗 Match Link</label>
                                 <div class="error-detail-value">
