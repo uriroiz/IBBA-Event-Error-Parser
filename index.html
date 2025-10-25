@@ -238,6 +238,24 @@
             background: #fafafa;
         }
 
+        .error-checkbox {
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            accent-color: #1976d2;
+            flex-shrink: 0;
+        }
+
+        .error-item.checked {
+            opacity: 0.6;
+            background: linear-gradient(to right, rgba(33, 150, 243, 0.04), transparent);
+        }
+
+        .error-item.checked .match-title {
+            text-decoration: line-through;
+            color: #9e9e9e;
+        }
+
         .header-content {
             display: flex;
             align-items: center;
@@ -646,6 +664,7 @@
                     <div class="error-item collapsed ${urgencyClass}" onclick="toggleError(this)">
                         <div class="error-header">
                             <span class="toggle-icon">›</span>
+                            <input type="checkbox" class="error-checkbox" onclick="handleCheckbox(event)" />
                             <div class="header-content">
                                 <div>
                                     <div class="match-title">${error.matchInfo}</div>
@@ -777,7 +796,7 @@
                     <div class="error-item collapsed ${urgencyClass}" onclick="toggleError(this)">
                         <div class="error-header">
                             <span class="toggle-icon">›</span>
-                            <div class="header-content">
+                            <input type="checkbox" class="error-checkbox" onclick="handleCheckbox(event)" />
                                 <div>
                                     <div class="match-title">${error.matchInfo}</div>
                                     ${error.dateStr ? `<div class="match-date">📅 ${dateFormatted}</div>` : ''}
@@ -819,6 +838,40 @@
         function toggleError(element) {
             element.classList.toggle('collapsed');
             element.classList.toggle('expanded');
+        }
+
+        function handleCheckbox(event) {
+            event.stopPropagation();
+            const errorItem = event.target.closest('.error-item');
+            errorItem.classList.toggle('checked');
+            updateStats();
+        }
+
+        function updateStats() {
+            const allItems = document.querySelectorAll('.error-item');
+            const checkedItems = document.querySelectorAll('.error-item.checked');
+            
+            window.allErrors.forEach((error, index) => {
+                const item = allItems[index];
+                if (item) {
+                    error.checked = item.classList.contains('checked');
+                }
+            });
+
+            // Update stat cards
+            const stats = {
+                overlapping: window.allErrors.filter(e => e.type === 'overlapping' && !e.checked).length,
+                venue_owner: window.allErrors.filter(e => e.type === 'venue_owner' && !e.checked).length,
+                archived: window.allErrors.filter(e => e.type === 'archived' && !e.checked).length,
+                nonexistent: window.allErrors.filter(e => e.type === 'nonexistent' && !e.checked).length,
+                total: window.allErrors.filter(e => !e.checked).length
+            };
+
+            document.querySelectorAll('.stat-card').forEach((card, index) => {
+                const labels = ['total', 'overlapping', 'venue_owner', 'archived', 'nonexistent'];
+                const label = labels[index];
+                card.querySelector('.number').textContent = stats[label];
+            });
         }
 
         function copyToClipboard(text, event) {
