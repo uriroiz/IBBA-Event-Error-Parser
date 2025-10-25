@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IBBA Event Error Parser</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', 'Segoe UI', sans-serif;
+            background: #fafafa;
+            min-height: 100vh;
+            padding: 16px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 4px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #212121;
+            margin-bottom: 20px;
+            font-size: 32px;
+            font-weight: 500;
+            letter-spacing: 0.25px;
+        }
+
+        .input-section {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 140px;
+            padding: 16px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 13px;
+            resize: vertical;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            background: #fafafa;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #1976d2;
+            background: white;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-parse {
+            background: #1976d2;
+            color: white;
+            box-shadow: 0 3px 1px -2px rgba(0, 0, 0, 0.2), 0 2px 2px 0 rgba(0, 0, 0, 0.14), 0 1px 5px 0 rgba(0, 0, 0, 0.12);
+        }
+
+        .btn-parse:hover {
+            background: #1565c0;
+            box-shadow: 0 5px 5px -3px rgba(0, 0, 0, 0.2), 0 8px 10px 1px rgba(0, 0, 0, 0.14), 0 3px 14px 2px rgba(0, 0, 0, 0.12);
+            transform: translateY(-2px);
+        }
+
+        .btn-parse:active {
+            box-shadow: 0 3px 5px -1px rgba(0, 0, 0, 0.2), 0 6px 10px 0 rgba(0, 0, 0, 0.14), 0 1px 18px 0 rgba(0, 0, 0, 0.12);
+            transform: translateY(0);
+        }
+
+        .btn-clear {
+            background: #f5f5f5;
+            color: #212121;
+            box-shadow: 0 2px 1px -1px rgba(0, 0, 0, 0.2), 0 1px 1px 0 rgba(0, 0, 0, 0.14), 0 1px 3px 0 rgba(0, 0, 0, 0.12);
+        }
+
+        .btn-clear:hover {
+            background: #eeeeee;
+            box-shadow: 0 4px 5px -2px rgba(0, 0, 0, 0.2), 0 7px 8px 1px rgba(0, 0, 0, 0.14), 0 2px 16px 1px rgba(0, 0, 0, 0.12);
+        }
+
+        .results {
+            display: grid;
+            gap: 16px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 4px;
+            box-shadow: 0 2px 1px -1px rgba(0, 0, 0, 0.2), 0 1px 1px 0 rgba(0, 0, 0, 0.14), 0 1px 3px 0 rgba(0, 0, 0, 0.12);
+            border-right: 4px solid #1976d2;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+        }
+
+        .stat-card:hover {
+            box-shadow: 0 5px 5px -3px rgba(0, 0, 0, 0.2), 0 8px 10px 1px rgba(0, 0, 0, 0.14), 0 3px 14px 2px rgba(0, 0, 0, 0.12);
+            transform: translateY(-2px);
+        }
+
+        .stat-card.active {
+            border-right-width: 6px;
+        }
+
+        .stat-card:nth-child(1) {
+            border-right-color: #1976d2;
+        }
+
+        .stat-card:nth-child(2) {
+            border-right-color: #ff9800;
+        }
+
+        .stat-card:nth-child(3) {
+            border-right-color: #f44336;
+        }
+
+        .stat-card:nth-child(4) {
+            border-right-color: #2196f3;
+        }
+
+        .stat-card:nth-child(5) {
+            border-right-color: #e91e63;
+        }
+
+        .stat-card h3 {
+            color: #757575;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+
+        .stat-card .number {
+            font-size: 32px;
+            font-weight: 500;
+            color: #212121;
+            letter-spacing: -0.5px;
+        }
+
+        .error-item {
+            background: white;
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: 0 2px 1px -1px rgba(0, 0, 0, 0.2), 0 1px 1px 0 rgba(0, 0, 0, 0.14), 0 1px 3px 0 rgba(0, 0, 0, 0.12);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            border-left: 4px solid #9e9e9e;
+        }
+
+        .error-item.urgent-7 {
+            border-left: 6px solid #d32f2f;
+            background: linear-gradient(to right, rgba(211, 47, 47, 0.08), transparent);
+            box-shadow: -3px 0 8px rgba(211, 47, 47, 0.15), 0 2px 1px -1px rgba(0, 0, 0, 0.2), 0 1px 1px 0 rgba(0, 0, 0, 0.14), 0 1px 3px 0 rgba(0, 0, 0, 0.12);
+        }
+
+        .error-item.urgent-30 {
+            border-left: 6px solid #f57c00;
+            background: linear-gradient(to right, rgba(245, 124, 0, 0.08), transparent);
+            box-shadow: -3px 0 8px rgba(245, 124, 0, 0.15), 0 2px 1px -1px rgba(0, 0, 0, 0.2), 0 1px 1px 0 rgba(0, 0, 0, 0.14), 0 1px 3px 0 rgba(0, 0, 0, 0.12);
+        }
+
+        .error-item.urgent-90 {
+            border-left: 6px solid #fbc02d;
+            background: linear-gradient(to right, rgba(251, 192, 45, 0.08), transparent);
+            box-shadow: -3px 0 8px rgba(251, 192, 45, 0.15), 0 2px 1px -1px rgba(0, 0, 0, 0.2), 0 1px 1px 0 rgba(0, 0, 0, 0.14), 0 1px 3px 0 rgba(0, 0, 0, 0.12);
+        }
+
+        .error-item:hover {
+            box-shadow: 0 5px 5px -3px rgba(0, 0, 0, 0.2), 0 8px 10px 1px rgba(0, 0, 0, 0.14), 0 3px 14px 2px rgba(0, 0, 0, 0.12);
+        }
+
+        .error-item.urgent-7:hover {
+            box-shadow: -3px 0 12px rgba(211, 47, 47, 0.25), 0 5px 5px -3px rgba(0, 0, 0, 0.2), 0 8px 10px 1px rgba(0, 0, 0, 0.14), 0 3px 14px 2px rgba(0, 0, 0, 0.12);
+        }
+
+        .error-item.urgent-30:hover {
+            box-shadow: -3px 0 12px rgba(245, 124, 0, 0.25), 0 5px 5px -3px rgba(0, 0, 0, 0.2), 0 8px 10px 1px rgba(0, 0, 0, 0.14), 0 3px 14px 2px rgba(0, 0, 0, 0.12);
+        }
+
+        .error-item.urgent-90:hover {
+            box-shadow: -3px 0 12px rgba(251, 192, 45, 0.25), 0 5px 5px -3px rgba(0, 0, 0, 0.2), 0 8px 10px 1px rgba(0, 0, 0, 0.14), 0 3px 14px 2px rgba(0, 0, 0, 0.12);
+        }
+
+        .error-header {
+            padding: 16px 24px;
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+            border-bottom: 1px solid #e0e0e0;
+            transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            gap: 12px;
+        }
+
+        .error-header:hover {
+            background: #fafafa;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .match-title {
+            font-weight: 500;
+            color: #212121;
+            font-size: 15px;
+            letter-spacing: 0.25px;
+        }
+
+        .match-date {
+            font-size: 12px;
+            color: #9e9e9e;
+            letter-spacing: 0.3px;
+        }
+
+        .error-type {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .type-overlapping {
+            background: #fff3e0;
+            color: #e65100;
+        }
+
+        .type-venue-owner {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .type-archived {
+            background: #e0f2f1;
+            color: #00695c;
+        }
+
+        .type-nonexistent {
+            background: #fce4ec;
+            color: #c2185b;
+        }
+
+        .urgency-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            margin-right: auto;
+        }
+
+        .urgency-7 {
+            background: #d32f2f;
+            color: white;
+        }
+
+        .urgency-30 {
+            background: #f57c00;
+            color: white;
+        }
+
+        .urgency-90 {
+            background: #fbc02d;
+            color: #212121;
+        }
+
+        .toggle-icon {
+            font-size: 24px;
+            color: #9e9e9e;
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
+            margin-right: 12px;
+        }
+
+        .error-item.collapsed .toggle-icon {
+            transform: rotate(-90deg);
+        }
+
+        .error-content {
+            padding: 0 24px;
+            max-height: 0;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .error-item.expanded .error-content {
+            max-height: 600px;
+            padding: 24px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .error-detail {
+            margin-bottom: 20px;
+        }
+
+        .error-detail:last-child {
+            margin-bottom: 0;
+        }
+
+        .error-detail-label {
+            font-weight: 500;
+            color: #1976d2;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .error-detail-value {
+            color: #424242;
+            word-break: break-word;
+            line-height: 1.5;
+            letter-spacing: 0.25px;
+        }
+
+        .match-link {
+            color: #1976d2;
+            text-decoration: none;
+            word-break: break-all;
+            transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-block;
+            padding-bottom: 2px;
+            border-bottom: 1px solid transparent;
+        }
+
+        .match-link:hover {
+            color: #1565c0;
+            border-bottom-color: #1976d2;
+        }
+
+        .copy-btn {
+            background: #f5f5f5;
+            border: 1px solid #e0e0e0;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .copy-btn:hover {
+            background: #1976d2;
+            color: white;
+            border-color: #1976d2;
+        }
+
+        .copy-btn:active {
+            box-shadow: 0 3px 5px -1px rgba(0, 0, 0, 0.2), 0 6px 10px 0 rgba(0, 0, 0, 0.14), 0 1px 18px 0 rgba(0, 0, 0, 0.12);
+        }
+
+        .empty-state {
+            background: white;
+            padding: 48px 24px;
+            border-radius: 4px;
+            text-align: center;
+            color: #9e9e9e;
+            box-shadow: 0 2px 1px -1px rgba(0, 0, 0, 0.2), 0 1px 1px 0 rgba(0, 0, 0, 0.14), 0 1px 3px 0 rgba(0, 0, 0, 0.12);
+            letter-spacing: 0.25px;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 24px;
+            }
+
+            .stats {
+                grid-template-columns: 1fr;
+            }
+
+            button {
+                font-size: 14px;
+                padding: 10px 16px;
+            }
+
+            .error-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .header-content {
+                width: 100%;
+                margin-bottom: 12px;
+            }
+
+            .toggle-icon {
+                align-self: flex-end;
+                margin-top: -28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏀 IBBA Event Error Parser</h1>
+            <p style="color: #9e9e9e; margin-top: 4px; font-size: 14px; letter-spacing: 0.25px;">Parse and filter event creation errors by category and date</p>
+            <div class="input-section">
+                <textarea id="input" placeholder="Paste error logs here..."></textarea>
+                <div class="button-group">
+                    <button class="btn-parse" onclick="parseErrors()">Parse Errors</button>
+                    <button class="btn-clear" onclick="clearAll()">Clear</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="results" class="results"></div>
+    </div>
+
+    <script>
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.error-item.expanded').forEach(item => {
+                    item.classList.remove('expanded');
+                    item.classList.add('collapsed');
+                });
+            }
+        });
+
+        function extractCleanLink(safeLink) {
+            try {
+                const match = safeLink.match(/https%3A%2F%2Fibasketball\.co\.il%2Fmatch%2F(\d+)%2F/);
+                if (match) {
+                    return `https://ibasketball.co.il/match/${match[1]}/`;
+                }
+            } catch (e) {}
+            return safeLink;
+        }
+
+        function parseErrors() {
+            const input = document.getElementById('input').value;
+            if (!input.trim()) {
+                alert('Please paste error logs');
+                return;
+            }
+
+            const errors = [];
+            let match;
+
+            // Parse overlapping events
+            const overlappingRegex = /payload params:([^}]*?"start\$date":"([^"]+)"[\s\S]*?)"Error occurred in MainBe Can't create event: overlapping[\s\S]*?last issue related with: ([^\n-]+) - (https[^\s]+)/g;
+            while ((match = overlappingRegex.exec(input)) !== null) {
+                errors.push({
+                    type: 'overlapping',
+                    eventName: null,
+                    matchInfo: match[3].trim(),
+                    link: extractCleanLink(match[4]),
+                    date: new Date(match[2]),
+                    dateStr: match[2],
+                    errorMessage: 'Overlapping events in the same venue',
+                    rawError: 'overlapping 1 existing events of the same venue'
+                });
+            }
+
+            // Parse venue ownership issues
+            const venueOwnerRegex = /payload params:([^}]*?"start\$date":"([^"]+)"[\s\S]*?)Venue [a-f0-9]+ does not belong to club ([^"]*)"[\s\S]*?last issue related with: ([^\n-]+) - (https[^\s]+)/g;
+            while ((match = venueOwnerRegex.exec(input)) !== null) {
+                errors.push({
+                    type: 'venue_owner',
+                    eventName: null,
+                    homeTeamId: null,
+                    clubName: match[3],
+                    matchInfo: match[4].trim(),
+                    link: extractCleanLink(match[5]),
+                    date: new Date(match[2]),
+                    dateStr: match[2],
+                    errorMessage: 'Venue does not belong to this club',
+                    rawError: `Venue does not belong to club ${match[3]}`
+                });
+            }
+
+            // Parse archived event issues
+            const archivedRegex = /payload params:([^}]*?"start\$date":"([^"]+)"[\s\S]*?)cant change times of archived event[\s\S]*?last issue related with: ([^\n-]+) - (https[^\s]+)/g;
+            while ((match = archivedRegex.exec(input)) !== null) {
+                errors.push({
+                    type: 'archived',
+                    eventName: null,
+                    homeTeam: null,
+                    awayTeam: null,
+                    matchInfo: match[3].trim(),
+                    link: extractCleanLink(match[4]),
+                    date: new Date(match[2]),
+                    dateStr: match[2],
+                    errorMessage: 'Cannot change times of archived event',
+                    rawError: 'cant change times of archived event'
+                });
+            }
+
+            // Parse non-existent venue issues
+            const nonexistentRegex = /issue related with: ([^\n-]+) - (https[^\s]+) - venue ID does not exist/g;
+            while ((match = nonexistentRegex.exec(input)) !== null) {
+                errors.push({
+                    type: 'nonexistent',
+                    matchInfo: match[1].trim(),
+                    link: extractCleanLink(match[2]),
+                    errorMessage: 'Venue ID does not exist',
+                    rawError: 'venue ID does not exist'
+                });
+            }
+
+            // Sort by date if available
+            errors.sort((a, b) => {
+                if (a.date && b.date) return a.date - b.date;
+                return 0;
+            });
+
+            displayResults(errors);
+        }
+
+        function displayResults(errors) {
+            const resultsDiv = document.getElementById('results');
+            
+            if (errors.length === 0) {
+                resultsDiv.innerHTML = '<div class="empty-state">No errors found</div>';
+                return;
+            }
+
+            const stats = {
+                overlapping: errors.filter(e => e.type === 'overlapping').length,
+                venue_owner: errors.filter(e => e.type === 'venue_owner').length,
+                archived: errors.filter(e => e.type === 'archived').length,
+                nonexistent: errors.filter(e => e.type === 'nonexistent').length,
+                total: errors.length
+            };
+
+            let html = `
+                <div class="stats">
+                    <div class="stat-card active" onclick="filterErrors(null, this)">
+                        <h3>Total Errors</h3>
+                        <div class="number">${stats.total}</div>
+                    </div>
+                    <div class="stat-card" onclick="filterErrors('overlapping', this)">
+                        <h3>Overlapping Events</h3>
+                        <div class="number">${stats.overlapping}</div>
+                    </div>
+                    <div class="stat-card" onclick="filterErrors('venue_owner', this)">
+                        <h3>Venue Issues</h3>
+                        <div class="number">${stats.venue_owner}</div>
+                    </div>
+                    <div class="stat-card" onclick="filterErrors('archived', this)">
+                        <h3>Archived Events</h3>
+                        <div class="number">${stats.archived}</div>
+                    </div>
+                    <div class="stat-card" onclick="filterErrors('nonexistent', this)">
+                        <h3>Non-existent Venues</h3>
+                        <div class="number">${stats.nonexistent}</div>
+                    </div>
+                </div>
+            `;
+
+            errors.forEach((error, index) => {
+                const typeLabel = {
+                    overlapping: 'Overlapping Events',
+                    venue_owner: 'Venue Ownership',
+                    archived: 'Archived Event',
+                    nonexistent: 'Non-existent Venue'
+                }[error.type];
+
+                const typeClass = `type-${error.type}`;
+                const dateFormatted = error.dateStr ? new Date(error.dateStr).toLocaleDateString('he-IL') + ' ' + new Date(error.dateStr).toLocaleTimeString('he-IL', {hour: '2-digit', minute: '2-digit'}) : '';
+
+                // Calculate urgency
+                let urgencyClass = '';
+                let urgencyBadge = '';
+                if (error.date) {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const daysUntil = Math.ceil((error.date - today) / (1000 * 60 * 60 * 24));
+                    if (daysUntil <= 10) {
+                        urgencyClass = 'urgent-7';
+                        urgencyBadge = `<span class="urgency-badge urgency-7">!!! In ${daysUntil} days</span>`;
+                    } else if (daysUntil <= 30) {
+                        urgencyClass = 'urgent-30';
+                        urgencyBadge = `<span class="urgency-badge urgency-30">!!</span>`;
+                    } else if (daysUntil <= 90) {
+                        urgencyClass = 'urgent-90';
+                        urgencyBadge = `<span class="urgency-badge urgency-90">!</span>`;
+                    }
+                }
+
+                html += `
+                    <div class="error-item collapsed ${urgencyClass}" onclick="toggleError(this)">
+                        <div class="error-header">
+                            <span class="toggle-icon">›</span>
+                            <div class="header-content">
+                                <div>
+                                    <div class="match-title">${error.matchInfo}</div>
+                                    ${error.dateStr ? `<div class="match-date">📅 ${dateFormatted}</div>` : ''}
+                                </div>
+                            </div>
+                            ${urgencyBadge}
+                            <span class="error-type ${typeClass}">${typeLabel}</span>
+                        </div>
+                        <div class="error-content">
+                            <div class="error-detail">
+                                <label class="error-detail-label">❌ Error Message</label>
+                                <div class="error-detail-value">${error.errorMessage}</div>
+                            </div>
+                            <div class="error-detail">
+                                <label class="error-detail-label">🔗 Match Link</label>
+                                <div class="error-detail-value">
+                                    <a href="${error.link}" target="_blank" class="match-link">${error.link}</a>
+                                    <button class="copy-btn" onclick="copyToClipboard('${error.link}', event)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="error-detail">
+                                <label class="error-detail-label">🔍 Raw Error</label>
+                                <div class="error-detail-value" style="font-family: 'Roboto Mono', monospace; font-size: 12px; background: #f5f5f5; padding: 12px; border-radius: 4px; border-right: 2px solid #1976d2;">${error.rawError}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            resultsDiv.innerHTML = html;
+            window.allErrors = errors;
+        }
+
+        function filterErrors(type, element) {
+            // Update active state
+            document.querySelectorAll('.stat-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            element.classList.add('active');
+
+            // Filter and render
+            if (type === null) {
+                renderErrors(window.allErrors);
+            } else {
+                const filtered = window.allErrors.filter(e => e.type === type);
+                renderErrors(filtered);
+            }
+        }
+
+        function renderErrors(errorsToShow) {
+            const resultsDiv = document.getElementById('results');
+            
+            if (errorsToShow.length === 0) {
+                resultsDiv.innerHTML = '<div class="empty-state">No errors found</div>';
+                return;
+            }
+
+            const stats = {
+                overlapping: window.allErrors.filter(e => e.type === 'overlapping').length,
+                venue_owner: window.allErrors.filter(e => e.type === 'venue_owner').length,
+                archived: window.allErrors.filter(e => e.type === 'archived').length,
+                nonexistent: window.allErrors.filter(e => e.type === 'nonexistent').length,
+                total: window.allErrors.length
+            };
+
+            let html = `
+                <div class="stats">
+                    <div class="stat-card active" onclick="filterErrors(null, this)">
+                        <h3>Total Errors</h3>
+                        <div class="number">${stats.total}</div>
+                    </div>
+                    <div class="stat-card" onclick="filterErrors('overlapping', this)">
+                        <h3>Overlapping Events</h3>
+                        <div class="number">${stats.overlapping}</div>
+                    </div>
+                    <div class="stat-card" onclick="filterErrors('venue_owner', this)">
+                        <h3>Venue Issues</h3>
+                        <div class="number">${stats.venue_owner}</div>
+                    </div>
+                    <div class="stat-card" onclick="filterErrors('archived', this)">
+                        <h3>Archived Events</h3>
+                        <div class="number">${stats.archived}</div>
+                    </div>
+                    <div class="stat-card" onclick="filterErrors('nonexistent', this)">
+                        <h3>Non-existent Venues</h3>
+                        <div class="number">${stats.nonexistent}</div>
+                    </div>
+                </div>
+            `;
+
+            errorsToShow.forEach((error) => {
+                const typeLabel = {
+                    overlapping: 'Overlapping Events',
+                    venue_owner: 'Venue Ownership',
+                    archived: 'Archived Event',
+                    nonexistent: 'Non-existent Venue'
+                }[error.type];
+
+                const typeClass = `type-${error.type}`;
+                const dateFormatted = error.dateStr ? new Date(error.dateStr).toLocaleDateString('he-IL') + ' ' + new Date(error.dateStr).toLocaleTimeString('he-IL', {hour: '2-digit', minute: '2-digit'}) : '';
+
+                // Calculate urgency
+                let urgencyClass = '';
+                let urgencyBadge = '';
+                if (error.date) {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const daysUntil = Math.ceil((error.date - today) / (1000 * 60 * 60 * 24));
+                    if (daysUntil <= 10) {
+                        urgencyClass = 'urgent-7';
+                        urgencyBadge = `<span class="urgency-badge urgency-7">!!! In ${daysUntil} days</span>`;
+                    } else if (daysUntil <= 30) {
+                        urgencyClass = 'urgent-30';
+                        urgencyBadge = `<span class="urgency-badge urgency-30">!!</span>`;
+                    } else if (daysUntil <= 90) {
+                        urgencyClass = 'urgent-90';
+                        urgencyBadge = `<span class="urgency-badge urgency-90">!</span>`;
+                    }
+                }
+
+                html += `
+                    <div class="error-item collapsed ${urgencyClass}" onclick="toggleError(this)">
+                        <div class="error-header">
+                            <span class="toggle-icon">›</span>
+                            <div class="header-content">
+                                <div>
+                                    <div class="match-title">${error.matchInfo}</div>
+                                    ${error.dateStr ? `<div class="match-date">📅 ${dateFormatted}</div>` : ''}
+                                </div>
+                            </div>
+                            ${urgencyBadge}
+                            <span class="error-type ${typeClass}">${typeLabel}</span>
+                        </div>
+                        <div class="error-content">
+                            <div class="error-detail">
+                                <label class="error-detail-label">❌ Error Message</label>
+                                <div class="error-detail-value">${error.errorMessage}</div>
+                            </div>
+                            <div class="error-detail">
+                                <label class="error-detail-label">🔗 Match Link</label>
+                                <div class="error-detail-value">
+                                    <a href="${error.link}" target="_blank" class="match-link">${error.link}</a>
+                                    <button class="copy-btn" onclick="copyToClipboard('${error.link}', event)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="error-detail">
+                                <label class="error-detail-label">🔍 Raw Error</label>
+                                <div class="error-detail-value" style="font-family: 'Roboto Mono', monospace; font-size: 12px; background: #f5f5f5; padding: 12px; border-radius: 4px; border-right: 2px solid #1976d2;">${error.rawError}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            resultsDiv.innerHTML = html;
+        }
+
+        function toggleError(element) {
+            element.classList.toggle('collapsed');
+            element.classList.toggle('expanded');
+        }
+
+        function copyToClipboard(text, event) {
+            event.stopPropagation();
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✓ Copied';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 2000);
+            });
+        }
+
+        function clearAll() {
+            document.getElementById('input').value = '';
+            document.getElementById('results').innerHTML = '';
+        }
+    </script>
+</body>
+</html>
