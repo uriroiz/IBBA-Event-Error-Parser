@@ -308,6 +308,11 @@
             color: #c2185b;
         }
 
+        .type-venue-change {
+            background: #f3e5f5;
+            color: #6a1b9a;
+        }
+
         .urgency-badge {
             display: inline-flex;
             align-items: center;
@@ -579,6 +584,20 @@
                 });
             }
 
+            // Parse venue change issues
+            const venueChangeRegex = /payload params:([^}]*?"start\$date":"([^"]+)"[\s\S]*?)cant change venue id of an event[\s\S]*?last issue related with: ([^\n-]+) - (https[^\s]+)/g;
+            while ((match = venueChangeRegex.exec(input)) !== null) {
+                errors.push({
+                    type: 'venue_change',
+                    matchInfo: match[3].trim(),
+                    link: extractCleanLink(match[4]),
+                    date: new Date(match[2]),
+                    dateStr: match[2],
+                    errorMessage: 'Cannot change venue ID of an event',
+                    rawError: 'cant change venue id of an event'
+                });
+            }
+
             // Sort by date if available
             errors.sort((a, b) => {
                 if (a.date && b.date) return a.date - b.date;
@@ -601,6 +620,7 @@
                 venue_owner: errors.filter(e => e.type === 'venue_owner').length,
                 archived: errors.filter(e => e.type === 'archived').length,
                 nonexistent: errors.filter(e => e.type === 'nonexistent').length,
+                venue_change: errors.filter(e => e.type === 'venue_change').length,
                 total: errors.length
             };
 
@@ -622,6 +642,10 @@
                         <h3>Archived Events</h3>
                         <div class="number">${stats.archived}</div>
                     </div>
+                    <div class="stat-card" onclick="filterErrors('venue_change', this)">
+                        <h3>Venue Change</h3>
+                        <div class="number">${stats.venue_change}</div>
+                    </div>
                     <div class="stat-card" onclick="filterErrors('nonexistent', this)">
                         <h3>Non-existent Venues</h3>
                         <div class="number">${stats.nonexistent}</div>
@@ -634,6 +658,7 @@
                     overlapping: 'Overlapping Events',
                     venue_owner: 'Venue Ownership',
                     archived: 'Archived Event',
+                    venue_change: 'Venue Change Error',
                     nonexistent: 'Non-existent Venue'
                 }[error.type];
 
@@ -732,6 +757,7 @@
                 overlapping: window.allErrors.filter(e => e.type === 'overlapping').length,
                 venue_owner: window.allErrors.filter(e => e.type === 'venue_owner').length,
                 archived: window.allErrors.filter(e => e.type === 'archived').length,
+                venue_change: window.allErrors.filter(e => e.type === 'venue_change').length,
                 nonexistent: window.allErrors.filter(e => e.type === 'nonexistent').length,
                 total: window.allErrors.length
             };
@@ -754,6 +780,10 @@
                         <h3>Archived Events</h3>
                         <div class="number">${stats.archived}</div>
                     </div>
+                    <div class="stat-card" onclick="filterErrors('venue_change', this)">
+                        <h3>Venue Change</h3>
+                        <div class="number">${stats.venue_change}</div>
+                    </div>
                     <div class="stat-card" onclick="filterErrors('nonexistent', this)">
                         <h3>Non-existent Venues</h3>
                         <div class="number">${stats.nonexistent}</div>
@@ -766,6 +796,7 @@
                     overlapping: 'Overlapping Events',
                     venue_owner: 'Venue Ownership',
                     archived: 'Archived Event',
+                    venue_change: 'Venue Change Error',
                     nonexistent: 'Non-existent Venue'
                 }[error.type];
 
@@ -862,12 +893,13 @@
                 overlapping: window.allErrors.filter(e => e.type === 'overlapping' && !e.checked).length,
                 venue_owner: window.allErrors.filter(e => e.type === 'venue_owner' && !e.checked).length,
                 archived: window.allErrors.filter(e => e.type === 'archived' && !e.checked).length,
+                venue_change: window.allErrors.filter(e => e.type === 'venue_change' && !e.checked).length,
                 nonexistent: window.allErrors.filter(e => e.type === 'nonexistent' && !e.checked).length,
                 total: window.allErrors.filter(e => !e.checked).length
             };
 
             document.querySelectorAll('.stat-card').forEach((card, index) => {
-                const labels = ['total', 'overlapping', 'venue_owner', 'archived', 'nonexistent'];
+                const labels = ['total', 'overlapping', 'venue_owner', 'archived', 'venue_change', 'nonexistent'];
                 const label = labels[index];
                 card.querySelector('.number').textContent = stats[label];
             });
