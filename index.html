@@ -523,7 +523,7 @@
             let match;
 
             // Parse overlapping events
-            const overlappingRegex = /payload params:([^}]*?"start\$date":"([^"]+)"[\s\S]*?)"Error occurred in MainBe Can't create event: overlapping[\s\S]*?List of overlapping events: ([a-f0-9]+)"[\s\S]*?last issue related with: ([^\n-]+) - (https[^\s]+)/g;
+            const overlappingRegex = /payload params:([^}]*?"start(?:\$|D)date":"([^"]+)"[\s\S]*?)"Error occurred in MainBe Can't create event: overlapping[\s\S]*?List of overlapping events: ([a-f0-9]+)"[\s\S]*?last issue related with: ([^\n-]+) - (https[^\s]+)/g;
             while ((match = overlappingRegex.exec(input)) !== null) {
                 errors.push({
                     type: 'overlapping',
@@ -538,8 +538,24 @@
                 });
             }
 
+            // Parse overlapping events (update event variant)
+            const overlappingUpdateRegex = /Can't update event:[^}]*with start date ([0-9T:+-]+) and end date[\s\S]*?List of overlapping events: ([a-f0-9]+)[\s\S]*?last issue related with: ([^\n-]+) - (https[^\s]+)/g;
+            while ((match = overlappingUpdateRegex.exec(input)) !== null) {
+                errors.push({
+                    type: 'overlapping',
+                    eventName: null,
+                    matchInfo: match[3].trim(),
+                    link: extractCleanLink(match[4]),
+                    date: new Date(match[1]),
+                    dateStr: match[1],
+                    overlappingEventId: match[2],
+                    errorMessage: 'Overlapping events in the same venue',
+                    rawError: `overlapping event ID: ${match[2]}`
+                });
+            }
+
             // Parse venue ownership issues
-            const venueOwnerRegex = /payload params:([^}]*?"start\$date":"([^"]+)"[\s\S]*?)Venue [a-f0-9]+ does not belong to club ([^"]*)"[\s\S]*?last issue related with: ([^\n-]+) - (https[^\s]+)/g;
+            const venueOwnerRegex = /payload params:([^}]*?"start(?:\$|D)date":"([^"]+)"[\s\S]*?)Venue [a-f0-9]+ does not belong to club ([^"]*)"[\s\S]*?last issue related with: ([^\n-]+) - (https[^\s]+)/g;
             while ((match = venueOwnerRegex.exec(input)) !== null) {
                 errors.push({
                     type: 'venue_owner',
@@ -556,7 +572,7 @@
             }
 
             // Parse archived event issues
-            const archivedRegex = /payload params:([^}]*?"start\$date":"([^"]+)"[\s\S]*?)cant change times of archived event[\s\S]*?last issue related with: ([^\n-]+) - (https[^\s]+)/g;
+            const archivedRegex = /payload params:([^}]*?"start(?:\$|D)date":"([^"]+)"[\s\S]*?)cant change times of archived event[\s\S]*?last issue related with: ([^\n-]+) - (https[^\s]+)/g;
             while ((match = archivedRegex.exec(input)) !== null) {
                 errors.push({
                     type: 'archived',
@@ -585,7 +601,7 @@
             }
 
             // Parse venue change issues
-            const venueChangeRegex = /payload params:([^}]*?"start\$date":"([^"]+)"[\s\S]*?)cant change venue id of an event[\s\S]*?last issue related with: ([^\n-]+) - (https[^\s]+)/g;
+            const venueChangeRegex = /payload params:([^}]*?"start(?:\$|D)date":"([^"]+)"[\s\S]*?)cant change venue id of an event[\s\S]*?last issue related with: ([^\n-]+) - (https[^\s]+)/g;
             while ((match = venueChangeRegex.exec(input)) !== null) {
                 errors.push({
                     type: 'venue_change',
@@ -595,6 +611,21 @@
                     dateStr: match[2],
                     errorMessage: 'Cannot change venue ID of an event',
                     rawError: 'cant change venue id of an event'
+                });
+            }
+
+
+            // Parse automation already started issues
+            const automationStartedRegex = /payload params:([^}]*?"start(?:\$|D)date":"([^"]+)"[\s\S]*?)cant change startDate once the automation had been started[\s\S]*?last issue related with: ([^\n-]+) - (https[^\s]+)/g;
+            while ((match = automationStartedRegex.exec(input)) !== null) {
+                errors.push({
+                    type: 'automation_started',
+                    matchInfo: match[3].trim(),
+                    link: extractCleanLink(match[4]),
+                    date: new Date(match[2]),
+                    dateStr: match[2],
+                    errorMessage: 'Cannot change start time - automation already started',
+                    rawError: 'cant change startDate once the automation had been started'
                 });
             }
 
@@ -621,6 +652,7 @@
                 archived: errors.filter(e => e.type === 'archived').length,
                 nonexistent: errors.filter(e => e.type === 'nonexistent').length,
                 venue_change: errors.filter(e => e.type === 'venue_change').length,
+                automation_started: errors.filter(e => e.type === 'automation_started').length,
                 total: errors.length
             };
 
@@ -650,6 +682,11 @@
                         <h3>Non-existent Venues</h3>
                         <div class="number">${stats.nonexistent}</div>
                     </div>
+                    <div class="stat-card" onclick="filterErrors('automation_started', this)">
+                        <h3>Can't Change Start Time</h3>
+                        <div class="number">${stats.automation_started}</div>
+                    </div>
+
                 </div>
             `;
 
@@ -659,7 +696,8 @@
                     venue_owner: 'Venue Ownership',
                     archived: 'Archived Event',
                     venue_change: 'Venue Change Error',
-                    nonexistent: 'Non-existent Venue'
+                    nonexistent: 'Non-existent Venue',
+                    automation_started: 'Can\'t Change Start Time',
                 }[error.type];
 
                 const typeClass = `type-${error.type}`;
@@ -759,6 +797,7 @@
                 archived: window.allErrors.filter(e => e.type === 'archived').length,
                 venue_change: window.allErrors.filter(e => e.type === 'venue_change').length,
                 nonexistent: window.allErrors.filter(e => e.type === 'nonexistent').length,
+                automation_started: window.allErrors.filter(e => e.type === 'automation_started').length,
                 total: window.allErrors.length
             };
 
@@ -895,11 +934,12 @@
                 archived: window.allErrors.filter(e => e.type === 'archived' && !e.checked).length,
                 venue_change: window.allErrors.filter(e => e.type === 'venue_change' && !e.checked).length,
                 nonexistent: window.allErrors.filter(e => e.type === 'nonexistent' && !e.checked).length,
+                automation_started: window.allErrors.filter(e => e.type === 'automation_started' && !e.checked).length,
                 total: window.allErrors.filter(e => !e.checked).length
             };
 
             document.querySelectorAll('.stat-card').forEach((card, index) => {
-                const labels = ['total', 'overlapping', 'venue_owner', 'archived', 'venue_change', 'nonexistent'];
+                const labels = ['total', 'overlapping', 'venue_owner', 'archived', 'venue_change', 'nonexistent', 'automation_started'];
                 const label = labels[index];
                 card.querySelector('.number').textContent = stats[label];
             });
